@@ -1,0 +1,3 @@
+[submodule "ocp4-helpernode"]
+	path = ocp4-helpernode
+	url = git@github.com:RedHatOfficial/ocp4-helpernode.git
