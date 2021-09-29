@@ -2,7 +2,7 @@
 
 ## Overview
 
-This helps you to deploy a OpenShift Cluster on KVM using ocp4-helpernode. This makefile create helper node, a bootstrap, three master nodes and 2 worker nodes.
+This helps you to deploy a OpenShift Cluster on KVM using ocp4-helpernode. This makefile create helper node, a bootstrap, three master nodes, 2 worker nodes and 3 ocs nodes.
 
 ## Architecture
 
@@ -17,6 +17,9 @@ The instances name also fixed and can not modify.
 - ocp4-master2
 - ocp4-worker0
 - ocp4-worker1
+- ocp4-odf0
+- ocp4-odf1
+- ocp4-odf2
 
 ## Tested resources (not the requirements)
 
@@ -46,6 +49,12 @@ To deploy OpenShift Cluster, execute the following command.
 
 ```[shell]
 # make all
+```
+
+To deploy OpenShift cluster with OCS, execute the following command.
+
+```[shell]
+# make all INSTALL_ODF=true
 ```
 
 ## Remove environment
