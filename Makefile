@@ -1,6 +1,6 @@
 export DEBUG = false
 WORKER_NUM = 2
-INSTALL_ODF = false
+export INSTALL_ODF = false
 
 ODF_NUM = 3
 
@@ -21,10 +21,11 @@ LIBVIRT_ISO_DIR = /var/lib/libvirt/ISO/
 
 VIRSH_NETNAME = openshift4
 
-all: 	prepare network helper ocp
+all: deploy_ocp install_lso install_ocs
+deploy_ocp: prepare network helper ocp
 helper: helper_deploy helper_wait helper_start
 ocp: ocp_prepare ocp_install
-ocp_prepare: masters bootstrap workers setup_helper generate_vars copy_vars run_playbook copy_pullsecret copy_install_script
+ocp_prepare: masters bootstrap workers odfs setup_helper generate_vars copy_vars run_playbook copy_pullsecret copy_install_script
 ocp_install: run_install start_vms wait_bootstrap_complete stop_bootstrap approve_csrs wait_install_complete
 
 prepare:
@@ -74,7 +75,6 @@ helper_start:
 	# Wait for succeeding connect with ssh
 	./scripts/wait_until_helper_running.sh $(HELPER_IP) $(SSH_PUB_BASTION)
 
-ocp_prepare: masters bootstrap workers setup_helper generate_vars copy_vars run_playbook copy_pullsecret copy_install_script
 
 masters:
 	./scripts/create_masters.sh
@@ -84,6 +84,9 @@ bootstrap:
 
 workers:
 	./scripts/create_workers.sh $(WORKER_NUM)
+
+odfs:
+	./scripts/create_odf.sh
 
 setup_helper:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
@@ -102,10 +105,10 @@ run_playbook:
 
 copy_pullsecret:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) mkdir -p ~/.openshift
-	scp  -o "StrictHostKeyChecking=no" ./pull-secret root@$(HELPER_IP):~/.openshift/pull-secret
+	scp -o "StrictHostKeyChecking=no" ./pull-secret root@$(HELPER_IP):~/.openshift/pull-secret
 
 copy_install_script:
-	scp  -o "StrictHostKeyChecking=no" ./scripts/install.sh root@$(HELPER_IP):~/
+	scp -o "StrictHostKeyChecking=no" ./scripts/install.sh root@$(HELPER_IP):~/
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install.sh
 
 run_install:
@@ -123,12 +126,22 @@ stop_bootstrap:
 
 approve_csrs:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "echo export KUBECONFIG=/root/ocp4/auth/kubeconfig >> .bashrc"
-	scp  -o "StrictHostKeyChecking=no" ./scripts/approve_csrs.sh root@$(HELPER_IP):~/
+	scp -o "StrictHostKeyChecking=no" ./scripts/approve_csrs.sh root@$(HELPER_IP):~/
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x approve_csrs.sh
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "./approve_csrs.sh $(WORKER_NUM)"
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./approve_csrs.sh $(WORKER_NUM) $(ODF_NUM)"
 
 wait_install_complete:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) openshift-install wait-for install-complete --dir ./ocp4
+
+install_lso:
+	scp -o "StrictHostKeyChecking=no" ./scripts/install_lso.sh root@$(HELPER_IP):~/
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_lso.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./install_lso.sh"
+
+install_ocs:
+	scp -o "StrictHostKeyChecking=no" ./scripts/install_ocs.sh root@$(HELPER_IP):~/
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_ocs.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./install_ocs.sh"
 
 clean:
 	rm -f $(WORK_DIR)/*
@@ -138,6 +151,9 @@ clean:
 helper_clean: 
 	-virsh destroy $(HELPER_NODE)
 	-virsh undefine $(HELPER_NODE) --remove-all-storage
+
+odf_clean:
+	-./scripts/destroy_odf.sh
 
 worker_clean:
 	-./scripts/destroy_workers.sh $(WORKER_NUM)
@@ -152,5 +168,5 @@ network_clean:
 	-virsh net-destroy $(VIRSH_NETNAME)
 	-virsh net-undefine $(VIRSH_NETNAME)
 
-flclean: clean worker_clean master_clean bootstrap_clean helper_clean network_clean
+flclean: clean odf_clean worker_clean master_clean bootstrap_clean helper_clean network_clean
 

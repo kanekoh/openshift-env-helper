@@ -41,4 +41,13 @@ workers:
   - name: "worker1"
     ipaddr: "192.168.7.12"
     macaddr: "${WORKER1_MAC}"
+  - name: "odf0"
+    ipaddr: "192.168.7.31"
+    macaddr: "${ODF0_MAC}"
+  - name: "odf1"
+    ipaddr: "192.168.7.32"
+    macaddr: "${ODF1_MAC}"
+  - name: "odf2"
+    ipaddr: "192.168.7.33"
+    macaddr: "${ODF2_MAC}"
 EOF
