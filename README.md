@@ -57,6 +57,12 @@ To deploy OpenShift cluster with OCS, execute the following command.
 # make all INSTALL_ODF=true
 ```
 
+After deploying OpenShift Cluster with OCS, you can set up OpenShift Container registry as follow:
+
+```
+# make setup_registry INSTALL_ODF=true
+```
+
 ## Remove environment
 
 If you do not need the envirnoment anymore, you can delete all the staff executing the following command.
