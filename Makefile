@@ -143,6 +143,11 @@ install_ocs:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_ocs.sh
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./install_ocs.sh"
 
+setup_registry:
+	scp -o "StrictHostKeyChecking=no" ./scripts/create_pvc.sh root@$(HELPER_IP):~/
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x create_pvc.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./create_pvc.sh"
+
 clean:
 	rm -f $(WORK_DIR)/*
 	sed -i '/^192.168.7.77/d' $(HOME_DIR)/.ssh/known_hosts
