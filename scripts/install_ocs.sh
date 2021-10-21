@@ -49,7 +49,13 @@ do
   fi
 done
 
+## Add taint
+oc get node | awk '{print $1}' | grep odf | while read NODE
+do
+  oc adm taint nodes $NODE node.ocs.openshift.io/storage=true:NoSchedule
+done
 
+## Deploy ODF cluster
 cat <<EOF | oc apply -f -
 ---
 apiVersion: ocs.openshift.io/v1

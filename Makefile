@@ -6,20 +6,25 @@ ODF_NUM = 3
 
 YUM_MODULES = ansible git
 MAKE_HOME = $(shell pwd)
-WORK_DIR = $(MAKE_HOME)/ocp4-workingdir
+export WORK_DIR = $(MAKE_HOME)/ocp4-workingdir
 HOME_DIR = $$HOME
+
+export NETWORK_NAME = openshift4
+VIRSH_NETNAME = $(NETWORK_NAME)
+export NETWORK_CIDR = 192.168.7
+PRIVATE_NETWORK_NAME = ocp4-private
+PRIVATE_NETWORK_CIDR = 192.168.4
 
 SSH_PUB_KEY = $(shell cat $(HOME_DIR)/.ssh/id_rsa.pub)
 
 HELPER_NODE = ocp4-aHelper
-HELPER_IP = 192.168.7.77
+HELPER_IP = $(NETWORK_CIDR).77
 HELPER_ISO = 8.0.1905/isos/x86_64/CentOS-8-x86_64-1905-dvd1.iso
 SSH_PUB_BASTION = $(HOME_DIR)/.ssh/id_rsa.pub
 
 LIBVIRT_ISO_DIR = /var/lib/libvirt/ISO/
 
 
-VIRSH_NETNAME = openshift4
 
 all: deploy_ocp install_lso install_ocs
 deploy_ocp: prepare network helper ocp
@@ -38,6 +43,10 @@ network:
 	# Define Network 
 	pwd
 	wget -P $(WORK_DIR) https://raw.githubusercontent.com/RedHatOfficial/ocp4-helpernode/master/docs/examples/virt-net.xml
+
+	sed -i -e "s@<name>openshift4</name>@<name>$(NETWORK_NAME)</name>@g" $(WORK_DIR)/virt-net.xml
+	sed -i -e "s@<bridge name='openshift4' stp='on' delay='0'/>@<bridge name='$(NETWORK_NAME)' stp='on' delay='0'/>@g" $(WORK_DIR)/virt-net.xml
+	
 	virsh net-define --file $(WORK_DIR)/virt-net.xml
 	virsh net-autostart $(VIRSH_NETNAME)
 	virsh net-start $(VIRSH_NETNAME)
@@ -53,7 +62,10 @@ helper_deploy:
 	fi
 
 	# Modify dnsnameserver
-	sed -i -e "s/8.8.8.8/192.168.7.1/g" $(WORK_DIR)/helper-ks.cfg
+	sed -i -e "s/8.8.8.8/$(NETWORK_CIDR).1/g" $(WORK_DIR)/helper-ks.cfg
+	sed -i -e "s/192.168.7.77/$(HELPER_IP)/g" $(WORK_DIR)/helper-ks.cfg
+	sed -i -e "s/192.168.7.1/$(NETWORK_CIDR).1/g" $(WORK_DIR)/helper-ks.cfg
+
 	# Add ssh key to helper-ks.cfg
 	#ansible localhost -m lineinfile -a "path=$(WORK_DIR)/helper-ks.cfg insertafter='rootpw --plaintext changeme' line='sshkey --username=root $(SSH_PUB_KEY)'"
 
@@ -92,7 +104,10 @@ setup_helper:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install ansible git
 
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone https://github.com/RedHatOfficial/ocp4-helpernode
+	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone https://github.com/RedHatOfficial/ocp4-helpernode
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone -b image_url https://github.com/kanekoh/ocp4-helpernode
+	scp -o "StrictHostKeyChecking=no" ./files/bashrc root@$(HELPER_IP):/tmp/bashrc
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "cat /tmp/bashrc >> ~/.bashrc"
 
 generate_vars:
 	./scripts/generate_vars.sh $(WORK_DIR)
@@ -112,7 +127,7 @@ copy_install_script:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install.sh
 
 run_install:
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) ./install.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "NETWORK_CIDR=$(NETWORK_CIDR)  ./install.sh"
 
 start_vms:
 	./scripts/start_vms.sh $(WORKER_NUM)
@@ -148,10 +163,19 @@ setup_registry:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x create_pvc.sh
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./create_pvc.sh"
 
+attach_additional_network:
+	./scripts/add_additional_network.sh $(PRIVATE_NETWORK_NAME) $(PRIVATE_NETWORK_CIDR)
+	./scripts/attach_additional_interface.sh 
+
+detach_additional_network:
+	./scripts/detach_additional_interface.sh
+
+restart_vms:
+	./scripts/restart_domains.sh
+
 clean:
 	rm -f $(WORK_DIR)/*
-	sed -i '/^192.168.7.77/d' $(HOME_DIR)/.ssh/known_hosts
-	sed -i '/^192.168.7.77/d' /root/.ssh/known_hosts
+	sed -i '/^$(NETWORK_CIDR).77/d' $(HOME_DIR)/.ssh/known_hosts
 
 helper_clean: 
 	-virsh destroy $(HELPER_NODE)
@@ -170,8 +194,10 @@ bootstrap_clean:
 	-./scripts/destroy_bootstrap.sh
 
 network_clean:
-	-virsh net-destroy $(VIRSH_NETNAME)
-	-virsh net-undefine $(VIRSH_NETNAME)
+	./scripts/remove_network.sh $(WORK_DIR)/virt-net.xml
 
-flclean: clean odf_clean worker_clean master_clean bootstrap_clean helper_clean network_clean
+additional_network_clean:
+	./scripts/remove_additional_network.sh 
+
+flclean: odf_clean worker_clean master_clean bootstrap_clean helper_clean additional_network_clean network_clean clean
 

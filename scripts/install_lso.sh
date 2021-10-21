@@ -75,6 +75,10 @@ spec:
       volumeMode: Block
       devicePaths:
         - /dev/vdb
+  tolerations:
+  - effect: NoSchedule
+    key: node.ocs.openshift.io/storage
+    value: "true"
 EOF
 
 
