@@ -24,6 +24,7 @@ networking:
   networkType: OpenShiftSDN
   serviceNetwork:
   - 172.30.0.0/16
+  machineCIDR: ${NETWORK_CIDR}.0/24
 platform:
   none: {}
 pullSecret: '$(< ~/.openshift/pull-secret)'
