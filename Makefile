@@ -1,6 +1,7 @@
 export DEBUG = false
 WORKER_NUM = 2
 export INSTALL_ODF = false
+OCP_VERSION=''
 
 ODF_NUM = 3
 
@@ -32,12 +33,13 @@ helper: helper_deploy helper_wait helper_start
 ocp: ocp_prepare ocp_install
 ocp_prepare: masters bootstrap workers odfs setup_helper generate_vars copy_vars run_playbook copy_pullsecret copy_install_script
 ocp_install: run_install start_vms wait_bootstrap_complete stop_bootstrap approve_csrs wait_install_complete
+ocs_install: install_lso install_ocs
 
 prepare:
 	#TODO Add check repo/rpms later
 	# yum -y install ansible git
-	cp ocp4-helpernode/docs/examples/vars.yaml $(WORK_DIR)/
-	
+	#cp ocp4-helpernode/docs/examples/vars.yaml $(WORK_DIR)/ 
+	echo "Nothing to do"
 
 network:
 	# Define Network 
@@ -104,13 +106,13 @@ setup_helper:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install ansible git
 
-	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone https://github.com/RedHatOfficial/ocp4-helpernode
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone -b image_url https://github.com/kanekoh/ocp4-helpernode
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone https://github.com/RedHatOfficial/ocp4-helpernode
+	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone -b image_url https://github.com/kanekoh/ocp4-helpernode
 	scp -o "StrictHostKeyChecking=no" ./files/bashrc root@$(HELPER_IP):/tmp/bashrc
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "cat /tmp/bashrc >> ~/.bashrc"
 
 generate_vars:
-	./scripts/generate_vars.sh $(WORK_DIR)
+	./scripts/generate_vars.sh $(WORK_DIR) $(OCP_VERSION)
 
 copy_vars:
 	scp -o "StrictHostKeyChecking=no" $(WORK_DIR)/vars.yaml root@$(HELPER_IP):~/ocp4-helpernode/
