@@ -1,6 +1,7 @@
 #!/bin/bash
 
 BASEDIR=$(dirname $0)
+OCP_VERSION=$2
 
 export BOOTSTRAP_MAC=$(${BASEDIR}/get_macaddress.sh ocp4-bootstrap)
 
@@ -27,4 +28,4 @@ else
   VARS_SCRIPT=./vars/vars.yaml
 fi
 
-${VARS_SCRIPT} ${WORK_DIR}
+${VARS_SCRIPT} ${WORK_DIR}  ${OCP_VERSION}

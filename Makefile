@@ -1,6 +1,7 @@
 export DEBUG = false
 WORKER_NUM = 2
 export INSTALL_ODF = false
+OCP_VERSION=''
 
 ODF_NUM = 3
 
@@ -19,7 +20,7 @@ SSH_PUB_KEY = $(shell cat $(HOME_DIR)/.ssh/id_rsa.pub)
 
 HELPER_NODE = ocp4-aHelper
 HELPER_IP = $(NETWORK_CIDR).77
-HELPER_ISO = 8.0.1905/isos/x86_64/CentOS-8-x86_64-1905-dvd1.iso
+HELPER_ISO = CentOS-7-x86_64-DVD-2009.iso
 SSH_PUB_BASTION = $(HOME_DIR)/.ssh/id_rsa.pub
 
 LIBVIRT_ISO_DIR = /var/lib/libvirt/ISO/
@@ -32,12 +33,13 @@ helper: helper_deploy helper_wait helper_start
 ocp: ocp_prepare ocp_install
 ocp_prepare: masters bootstrap workers odfs setup_helper generate_vars copy_vars run_playbook copy_pullsecret copy_install_script
 ocp_install: run_install start_vms wait_bootstrap_complete stop_bootstrap approve_csrs wait_install_complete
+ocs_install: install_lso install_ocs
 
 prepare:
 	#TODO Add check repo/rpms later
 	# yum -y install ansible git
-	cp ocp4-helpernode/docs/examples/vars.yaml $(WORK_DIR)/
-	
+	#cp ocp4-helpernode/docs/examples/vars.yaml $(WORK_DIR)/ 
+	echo "Nothing to do"
 
 network:
 	# Define Network 
@@ -55,10 +57,10 @@ network:
 helper_deploy:
 	##TODO Why cannot sshkey be inserted the vm?
 	# Deploy Helper node
-	wget https://raw.githubusercontent.com/RedHatOfficial/ocp4-helpernode/master/docs/examples/helper-ks8.cfg -O $(WORK_DIR)/helper-ks.cfg
+	wget https://raw.githubusercontent.com/RedHatOfficial/ocp4-helpernode/master/docs/examples/helper-ks.cfg -O $(WORK_DIR)/helper-ks.cfg
 
 	if [ ! -f $(LIBVIRT_ISO_DIR)/$(shell basename $(HELPER_ISO) ) ]; then \
-	  wget -P $(LIBVIRT_ISO_DIR) http://ftp.iij.ad.jp/pub/linux/centos-vault/centos/$(HELPER_ISO); \
+	  wget -P $(LIBVIRT_ISO_DIR) http://ftp.nara.wide.ad.jp/pub/Linux/centos/7.9.2009/isos/x86_64/$(HELPER_ISO); \
 	fi
 
 	# Modify dnsnameserver
@@ -71,8 +73,8 @@ helper_deploy:
 
 	virt-install --name=$(HELPER_NODE) --vcpus=2 --ram=4096 \
 	--disk path=/var/lib/libvirt/images/$(HELPER_NODE).qcow2,bus=virtio,size=50 \
-	--os-variant centos8 --network network=openshift4,model=virtio \
-	--boot hd,menu=on --location /var/lib/libvirt/ISO/CentOS-8-x86_64-1905-dvd1.iso \
+	--os-variant centos7.0 --network network=openshift4,model=virtio \
+	--boot hd,menu=on --location /var/lib/libvirt/ISO/$(HELPER_ISO) \
 	--initrd-inject $(WORK_DIR)/helper-ks.cfg --extra-args "inst.ks=file:/helper-ks.cfg" --noautoconsole
 	@sleep 5
 
@@ -101,16 +103,17 @@ odfs:
 	./scripts/create_odf.sh
 
 setup_helper:
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install epel-release
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install ansible git
 
-	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone https://github.com/RedHatOfficial/ocp4-helpernode
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone -b image_url https://github.com/kanekoh/ocp4-helpernode
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone https://github.com/RedHatOfficial/ocp4-helpernode
+	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone -b image_url https://github.com/kanekoh/ocp4-helpernode
 	scp -o "StrictHostKeyChecking=no" ./files/bashrc root@$(HELPER_IP):/tmp/bashrc
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "cat /tmp/bashrc >> ~/.bashrc"
 
 generate_vars:
-	./scripts/generate_vars.sh $(WORK_DIR)
+	./scripts/generate_vars.sh $(WORK_DIR) $(OCP_VERSION)
 
 copy_vars:
 	scp -o "StrictHostKeyChecking=no" $(WORK_DIR)/vars.yaml root@$(HELPER_IP):~/ocp4-helpernode/
@@ -154,9 +157,9 @@ install_lso:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./install_lso.sh"
 
 install_ocs:
-	scp -o "StrictHostKeyChecking=no" ./scripts/install_ocs.sh root@$(HELPER_IP):~/
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_ocs.sh
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./install_ocs.sh"
+	scp -o "StrictHostKeyChecking=no" ./scripts/install_odf.sh root@$(HELPER_IP):~/
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_odf.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./install_odf.sh"
 
 setup_registry:
 	scp -o "StrictHostKeyChecking=no" ./scripts/create_pvc.sh root@$(HELPER_IP):~/

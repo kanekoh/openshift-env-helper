@@ -1,0 +1,40 @@
+---
+
+disk: vda
+helper:
+  name: "helper"
+  ipaddr: ".77"
+dns:
+  domain: "example.com"
+  clusterid: "ocp4"
+  forwarder1: ".1"
+  forwarder2: ".1"
+dhcp:
+  router: ".1"
+  bcast: ".255"
+  netmask: "255.255.255.0"
+  poolstart: ".10"
+  poolend: ".30"
+  ipid: ".0"
+  netmaskid: "255.255.255.0"
+bootstrap:
+  name: "bootstrap"
+  ipaddr: ".20"
+  macaddr: ""
+masters:
+  - name: "master0"
+    ipaddr: ".21"
+    macaddr: ""
+  - name: "master1"
+    ipaddr: ".22"
+    macaddr: ""
+  - name: "master2"
+    ipaddr: ".23"
+    macaddr: ""
+workers:
+  - name: "worker0"
+    ipaddr: ".11"
+    macaddr: ""
+  - name: "worker1"
+    ipaddr: ".12"
+    macaddr: ""

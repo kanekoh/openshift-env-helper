@@ -1,0 +1,14 @@
+---
+ocp_bios: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-live-rootfs.x86_64.img"
+ocp_initramfs: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-live-initramfs.x86_64.img"
+ocp_install_kernel: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/latest/rhcos-live-kernel-x86_64"
+ocp_client: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz"
+ocp_installer: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-install-linux.tar.gz"
+setup_registry:
+  deploy: false
+  autosync_registry: false
+  registry_image: docker.io/library/registry:2
+  local_repo: "ocp4/openshift4"
+  product_repo: "openshift-release-dev"
+  release_name: "ocp-release"
+  release_tag: "4.9.9-x86_64"

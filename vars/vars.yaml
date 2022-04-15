@@ -1,8 +1,15 @@
 
 WORK_DIR=$1
 
+export VER=""
+if [ -e "versions/main-$2.yml" ]; then
+  VER=$(cat versions/main-$2.yml)
+fi
+
+
 cat <<EOF > ${WORK_DIR}/vars.yaml
 ---
+$VER
 disk: vda
 helper:
   name: "helper"
