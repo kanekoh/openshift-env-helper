@@ -8,7 +8,7 @@ WORK_DIR=../ocp4-workingdir
 for i in $(seq 0 ${WORKER_NUM})
 do
   DOMAIN=ocp4-worker${i}
-  virt-install --name="${DOMAIN}" --vcpus=4 --ram=8192 \
+  virt-install --name="${DOMAIN}" --vcpus=12 --ram=32768 \
   --disk path=/var/lib/libvirt/images/${DOMAIN}.qcow2,bus=virtio,size=120 \
   --os-variant rhel8.0 --network network=${NETWORK_NAME},model=virtio \
   --boot hd,network,menu=on --print-xml > ${WORK_DIR}/${DOMAIN}.xml

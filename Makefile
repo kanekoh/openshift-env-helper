@@ -20,7 +20,7 @@ SSH_PUB_KEY = $(shell cat $(HOME_DIR)/.ssh/id_rsa.pub)
 
 HELPER_NODE = ocp4-aHelper
 HELPER_IP = $(NETWORK_CIDR).77
-HELPER_ISO = rhel-8.6-x86_64-dvd.iso
+HELPER_ISO = rhel-8-x86_64-dvd.iso
 SSH_PUB_BASTION = $(HOME_DIR)/.ssh/id_rsa.pub
 
 LIBVIRT_ISO_DIR = /var/lib/libvirt/ISO/
@@ -37,9 +37,6 @@ ocp_install: run_install start_vms wait_bootstrap_complete stop_bootstrap approv
 ocs_install: install_lso install_ocs
 
 prepare:
-	#TODO Add check repo/rpms later
-	# yum -y install ansible git
-	#cp ocp4-helpernode/docs/examples/vars.yaml $(WORK_DIR)/ 
 	echo "Nothing to do"
 
 network:
@@ -58,7 +55,6 @@ network:
 helper_deploy:
 	##TODO Why cannot sshkey be inserted the vm?
 	# Deploy Helper node
-	#wget https://raw.githubusercontent.com/RedHatOfficial/ocp4-helpernode/master/docs/examples/helper-ks.cfg -O $(WORK_DIR)/helper-ks.cfg
 	wget https://raw.githubusercontent.com/redhat-cop/ocp4-helpernode/main/docs/examples/helper-ks8.cfg -O  $(WORK_DIR)/helper-ks.cfg
 
 	# Modify dnsnameserver
@@ -73,7 +69,7 @@ helper_deploy:
 
 	virt-install --name=$(HELPER_NODE) --vcpus=2 --ram=4096 \
 	--disk path=/var/lib/libvirt/images/$(HELPER_NODE).qcow2,bus=virtio,size=50 \
-	--os-variant centos7.0 --network network=openshift4,model=virtio \
+	--os-variant rhel8.0 --network network=openshift4,model=virtio \
 	--boot hd,menu=on --location /var/lib/libvirt/ISO/$(HELPER_ISO) \
 	--initrd-inject $(WORK_DIR)/helper-ks.cfg --extra-args "inst.ks=file:/helper-ks.cfg" --graphics vnc,listen=0.0.0.0 --noautoconsole
 	@sleep 5
@@ -103,9 +99,9 @@ odfs:
 	./scripts/create_odf.sh
 
 setup_helper:
-	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install epel-release
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) yum -y install ansible git
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) dnf -y install ansible-core git
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) ansible-galaxy collection install community.crypto
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) ansible-galaxy collection install ansible.posix
 
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone https://github.com/RedHatOfficial/ocp4-helpernode
 	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone -b image_url https://github.com/kanekoh/ocp4-helpernode
@@ -130,6 +126,7 @@ copy_install_script:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install.sh
 
 run_install:
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "oc completion bash > /etc/bash_completion.d/oc_bash_completion"
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "NETWORK_CIDR=$(NETWORK_CIDR)  ./install.sh"
 
 start_vms:
