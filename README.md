@@ -45,7 +45,7 @@ You also need to prepare some files and configs as below:
 ## Quick Start
 
 To deploy OpenShift Cluster, execute the following command.
-
+All the following commands need to specify RHSM_USERNAME and RHSM_PASSWORD parameters for registering subscription on helper node.
 
 ```[shell]
 # make all

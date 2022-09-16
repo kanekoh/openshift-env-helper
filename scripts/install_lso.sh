@@ -16,7 +16,7 @@ done
 
 echo "Install Operator"
 OC_VERSION=$(oc version -o yaml | grep openshiftVersion | grep -o '[0-9]*[.][0-9]*' | head -1)
-
+DEFAULT_CHANNEL=$(oc get packagemanifests -n openshift-marketplace local-storage-operator -o jsonpath='{.status.defaultChannel}')
 
 cat <<EOF | oc apply -f -
 apiVersion: operators.coreos.com/v1alpha2
@@ -34,7 +34,7 @@ metadata:
   name: local-storage-operator
   namespace: openshift-local-storage
 spec:
-  channel: "${OC_VERSION}"
+  channel: "${DEFAULT_CHANNEL}"
   installPlanApproval: Automatic
   name: local-storage-operator
   source: redhat-operators
