@@ -3,3 +3,4 @@ ocp_initramfs: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos
 ocp_install_kernel: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.11/latest/rhcos-live-kernel-x86_64"
 ocp_client: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest-4.11/openshift-client-linux.tar.gz"
 ocp_installer: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest-4.11/openshift-install-linux.tar.gz"
+critical_services: ["httpd",  "named", "haproxy"]

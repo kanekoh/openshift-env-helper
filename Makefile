@@ -99,7 +99,7 @@ odfs:
 	./scripts/create_odf.sh
 
 setup_helper:
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) dnf -y install ansible-core git
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) dnf -y install ansible-core git wget
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) ansible-galaxy collection install community.crypto
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) ansible-galaxy collection install ansible.posix
 
@@ -107,6 +107,10 @@ setup_helper:
 	#ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) git clone -b image_url https://github.com/kanekoh/ocp4-helpernode
 	scp -o "StrictHostKeyChecking=no" ./files/bashrc root@$(HELPER_IP):/tmp/bashrc
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "cat /tmp/bashrc >> ~/.bashrc"
+
+	scp -o "StrictHostKeyChecking=no" ./scripts/install_clis.sh root@$(HELPER_IP):~/
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_clis.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "NETWORK_CIDR=$(NETWORK_CIDR)  ./install_clis.sh"
 
 generate_vars:
 	./scripts/generate_vars.sh $(WORK_DIR) $(OCP_VERSION)
@@ -162,6 +166,21 @@ setup_registry:
 	scp -o "StrictHostKeyChecking=no" ./scripts/create_pvc.sh root@$(HELPER_IP):~/
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x create_pvc.sh
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./create_pvc.sh"
+
+setup_efk:
+	scp -o "StrictHostKeyChecking=no" ./scripts/install_clo.sh root@$(HELPER_IP):~/
+	scp -o "StrictHostKeyChecking=no" ./scripts/install_efk.sh root@$(HELPER_IP):~/
+	scp -o "StrictHostKeyChecking=no" ./scripts/deploy_efk.sh root@$(HELPER_IP):~/
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_clo.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_efk.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x deploy_efk.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) "DEBUG=$(DEBUG) INSTALL_ODF=$(INSTALL_ODF) ./install_efk.sh"
+
+setup_loki:
+	scp -o "StrictHostKeyChecking=no" ./scripts/install_clo.sh root@$(HELPER_IP):~/
+	scp -o "StrictHostKeyChecking=no" ./scripts/deploy_loki.sh root@$(HELPER_IP):~/
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x install_clo.sh
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) chmod +x deploy_loki.sh
 
 attach_additional_network:
 	./scripts/add_additional_network.sh $(PRIVATE_NETWORK_NAME) $(PRIVATE_NETWORK_CIDR)
