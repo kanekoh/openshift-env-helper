@@ -1,0 +1,7 @@
+<network>
+  <name>ocp4-private</name>
+  <bridge name='ocp4-private' stp='on' delay='0'/>
+  <domain name='exampole.local'/>
+  <ip address='192.168.100.1' netmask='255.255.255.0'>
+  </ip>
+</network>

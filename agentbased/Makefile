@@ -7,20 +7,21 @@ ODF_NUM = 3
 
 YUM_MODULES = ansible git
 MAKE_HOME = $(shell pwd)
-export WORK_DIR = $(MAKE_HOME)/ocp4-workingdir
+export WORK_DIR = $(MAKE_HOME)/resources
 HOME_DIR = $$HOME
 
-export NETWORK_NAME = openshift4
+export NETWORK_NAME = ocp4-public
 VIRSH_NETNAME = $(NETWORK_NAME)
 export NETWORK_CIDR = 192.168.7
-PRIVATE_NETWORK_NAME = ocp4-private
-PRIVATE_NETWORK_CIDR = 192.168.4
+export PRIVATE_NETWORK_NAME = ocp4-private
+
+#PRIVATE_NETWORK_CIDR = 192.168.4
 
 SSH_PUB_KEY = $(shell cat $(HOME_DIR)/.ssh/id_rsa.pub)
 
 HELPER_NODE = ocp4-aHelper
 HELPER_IP = $(NETWORK_CIDR).77
-HELPER_ISO = rhel-8-x86_64-dvd.iso
+HELPER_ISO = rhel-9.3-x86.iso
 SSH_PUB_BASTION = $(HOME_DIR)/.ssh/id_rsa.pub
 
 LIBVIRT_ISO_DIR = /var/lib/libvirt/ISO/
@@ -28,48 +29,37 @@ LIBVIRT_ISO_DIR = /var/lib/libvirt/ISO/
 RHSM_USERNAME = MYNAME
 RHSM_PASSWORD = MYPASSWD
 
+export AGENT_ISO =  agent.x86_64.iso
+
 all: deploy_ocp install_lso install_ocs
-deploy_ocp: prepare network helper ocp
+deploy_ocp: network helper ocp
 helper: helper_deploy helper_wait helper_start
 ocp: ocp_prepare ocp_install
 ocp_prepare: masters bootstrap workers odfs setup_helper generate_vars copy_vars run_playbook copy_pullsecret copy_install_script
 ocp_install: run_install start_vms wait_bootstrap_complete stop_bootstrap approve_csrs wait_install_complete
 ocs_install: install_lso install_ocs
 
-prepare:
-	echo "Nothing to do"
-
 network:
 	# Define Network 
-	pwd
-	wget -P $(WORK_DIR) https://raw.githubusercontent.com/RedHatOfficial/ocp4-helpernode/master/docs/examples/virt-net.xml
-
-	sed -i -e "s@<name>openshift4</name>@<name>$(NETWORK_NAME)</name>@g" $(WORK_DIR)/virt-net.xml
-	sed -i -e "s@<bridge name='openshift4' stp='on' delay='0'/>@<bridge name='$(NETWORK_NAME)' stp='on' delay='0'/>@g" $(WORK_DIR)/virt-net.xml
-	
 	virsh net-define --file $(WORK_DIR)/virt-net.xml
 	virsh net-autostart $(VIRSH_NETNAME)
 	virsh net-start $(VIRSH_NETNAME)
 
+	virsh net-define --file $(WORK_DIR)/private-virt-net.xml
+	virsh net-autostart $(PRIVATE_NETWORK_NAME)
+	virsh net-start $(PRIVATE_NETWORK_NAME)
+
 
 helper_deploy:
-	##TODO Why cannot sshkey be inserted the vm?
-	# Deploy Helper node
-	wget https://raw.githubusercontent.com/redhat-cop/ocp4-helpernode/main/docs/examples/helper-ks8.cfg -O  $(WORK_DIR)/helper-ks.cfg
 
-	# Modify dnsnameserver
-	sed -i -e "s/8.8.8.8/$(NETWORK_CIDR).1/g" $(WORK_DIR)/helper-ks.cfg
-	sed -i -e "s/192.168.7.77/$(HELPER_IP)/g" $(WORK_DIR)/helper-ks.cfg
-	sed -i -e "s/192.168.7.1/$(NETWORK_CIDR).1/g" $(WORK_DIR)/helper-ks.cfg
-
-	./scripts/add-rhsm-to-ks.sh $(WORK_DIR) $(RHSM_USERNAME) $(RHSM_PASSWORD)
+	#./scripts/add-rhsm-to-ks.sh $(WORK_DIR) $(RHSM_USERNAME) $(RHSM_PASSWORD)
 
 	# Add ssh key to helper-ks.cfg
-	#ansible localhost -m lineinfile -a "path=$(WORK_DIR)/helper-ks.cfg insertafter='rootpw --plaintext changeme' line='sshkey --username=root $(SSH_PUB_KEY)'"
 
 	virt-install --name=$(HELPER_NODE) --vcpus=2 --ram=4096 \
-	--disk path=/var/lib/libvirt/images/$(HELPER_NODE).qcow2,bus=virtio,size=50 \
-	--os-variant rhel8.0 --network network=openshift4,model=virtio \
+	--disk path=/var/lib/libvirt/images/$(HELPER_NODE).qcow2,bus=virtio,size=200 \
+	--os-variant rhel8.0 --network network=$(NETWORK_NAME),model=virtio \
+	--network network=$(PRIVATE_NETWORK_NAME),model=virtio \
 	--boot hd,menu=on --location /var/lib/libvirt/ISO/$(HELPER_ISO) \
 	--initrd-inject $(WORK_DIR)/helper-ks.cfg --extra-args "inst.ks=file:/helper-ks.cfg" --graphics vnc,listen=0.0.0.0 --noautoconsole
 	@sleep 5
@@ -77,29 +67,25 @@ helper_deploy:
 helper_wait:
 	## Cant exit loop with some reasons.. 
 	# Wait until helper node is stopped.
-	./scripts/check_helper_running.sh $(HELPER_NODE)
+	../scripts/check_helper_running.sh $(HELPER_NODE)
 
 helper_start:
 	##TODO it is not good
 	virsh start $(HELPER_NODE)
 	# Wait for succeeding connect with ssh
-	./scripts/wait_until_helper_running.sh $(HELPER_IP) $(SSH_PUB_BASTION)
+	../scripts/wait_until_helper_running.sh $(HELPER_IP) $(SSH_PUB_BASTION)
 
 
 masters:
 	./scripts/create_masters.sh
 
-bootstrap:
-	./scripts/create_bootstrap.sh
 
 workers:
 	./scripts/create_workers.sh $(WORKER_NUM)
 
-odfs:
-	./scripts/create_odf.sh
 
 setup_helper:
-	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) dnf -y install ansible-core git wget python3-libsemanage
+	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) dnf -y install ansible-core git wget
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) ansible-galaxy collection install community.crypto
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) ansible-galaxy collection install ansible.posix
 
@@ -213,10 +199,15 @@ bootstrap_clean:
 	-./scripts/destroy_bootstrap.sh
 
 network_clean:
-	./scripts/remove_network.sh $(WORK_DIR)/virt-net.xml
+	virsh net-destroy $(NETWORK_NAME)
+	virsh net-undefine $(NETWORK_NAME)
+
+	virsh net-destroy $(PRIVATE_NETWORK_NAME)
+	virsh net-undefine $(PRIVATE_NETWORK_NAME)
 
 additional_network_clean:
 	./scripts/remove_additional_network.sh 
 
-flclean: odf_clean worker_clean master_clean bootstrap_clean helper_clean additional_network_clean network_clean clean
+flclean:  worker_clean master_clean helper_clean network_clean
+
 

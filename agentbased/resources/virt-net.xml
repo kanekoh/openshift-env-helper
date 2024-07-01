@@ -1,0 +1,13 @@
+<network>
+  <name>ocp4-public</name>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='ocp4-public' stp='on' delay='0'/>
+  <domain name='example.com'/>
+  <ip address='192.168.7.1' netmask='255.255.255.0'>
+  </ip>
+</network>
+

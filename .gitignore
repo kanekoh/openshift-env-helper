@@ -2,3 +2,8 @@ ocp4-workingdir/*
 pull-secret
 *.log
 install.log
+*.iso
+kubeconfig
+kubeadmin-password
+.openshift_install_state.json
+rendezvousIP
