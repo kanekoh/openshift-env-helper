@@ -13,6 +13,6 @@ do
   --disk path=/var/lib/libvirt/images/ocp4-${i}.qcow2,bus=virtio,cache=none,format=qcow2,size=120 \
   --disk path=/var/lib/libvirt/images/odf-${i}.qcow2,bus=virtio,cache=none,format=qcow2,size=500 \
   --os-variant rhel8.0 --network network=${NETWORK_NAME},model=virtio --graphics vnc,listen=0.0.0.0 --noautoconsole \
-  --boot hd,network,menu=on --print-xml > ${WORK_DIR}/ocp4-$i.xml
+  --boot hd,network,menu=on --autostart --print-xml > ${WORK_DIR}/ocp4-$i.xml 
   virsh define --file ${WORK_DIR}/ocp4-$i.xml
 done

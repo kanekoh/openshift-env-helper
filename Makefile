@@ -20,7 +20,7 @@ SSH_PUB_KEY = $(shell cat $(HOME_DIR)/.ssh/id_rsa.pub)
 
 HELPER_NODE = ocp4-aHelper
 HELPER_IP = $(NETWORK_CIDR).77
-HELPER_ISO = rhel-8-x86_64-dvd.iso
+HELPER_ISO = rhel-9.3-x86.iso
 SSH_PUB_BASTION = $(HOME_DIR)/.ssh/id_rsa.pub
 
 LIBVIRT_ISO_DIR = /var/lib/libvirt/ISO/
@@ -65,13 +65,13 @@ helper_deploy:
 	./scripts/add-rhsm-to-ks.sh $(WORK_DIR) $(RHSM_USERNAME) $(RHSM_PASSWORD)
 
 	# Add ssh key to helper-ks.cfg
-	#ansible localhost -m lineinfile -a "path=$(WORK_DIR)/helper-ks.cfg insertafter='rootpw --plaintext changeme' line='sshkey --username=root $(SSH_PUB_KEY)'"
+	ansible localhost -m lineinfile -a "path=$(WORK_DIR)/helper-ks.cfg insertafter='rootpw --plaintext changeme' line='sshkey --username=root \"$(SSH_PUB_KEY)\"'"
 
 	virt-install --name=$(HELPER_NODE) --vcpus=2 --ram=4096 \
 	--disk path=/var/lib/libvirt/images/$(HELPER_NODE).qcow2,bus=virtio,size=50 \
 	--os-variant rhel8.0 --network network=openshift4,model=virtio \
 	--boot hd,menu=on --location /var/lib/libvirt/ISO/$(HELPER_ISO) \
-	--initrd-inject $(WORK_DIR)/helper-ks.cfg --extra-args "inst.ks=file:/helper-ks.cfg" --graphics vnc,listen=0.0.0.0 --noautoconsole
+	--initrd-inject $(WORK_DIR)/helper-ks.cfg --extra-args "inst.ks=file:/helper-ks.cfg" --graphics vnc,listen=0.0.0.0 --noautoconsole --autostart
 	@sleep 5
 
 helper_wait:
@@ -88,15 +88,19 @@ helper_start:
 
 masters:
 	./scripts/create_masters.sh
+	./scripts/set_autostart.sh master 3
 
 bootstrap:
 	./scripts/create_bootstrap.sh
 
 workers:
 	./scripts/create_workers.sh $(WORKER_NUM)
+	./scripts/set_autostart.sh worker $(WORKER_NUM)
+
 
 odfs:
 	./scripts/create_odf.sh
+	./scripts/set_autostart.sh odf 3
 
 setup_helper:
 	ssh -o "StrictHostKeyChecking=no" root@$(HELPER_IP) dnf -y install ansible-core git wget

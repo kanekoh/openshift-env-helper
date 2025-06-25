@@ -1,0 +1,9 @@
+---
+- name: Create helper node
+  hosts: workstation
+  vars:
+    virt_network_name: openshift-public
+    virt_network_gw: 192.168.7.1
+    virt_network_mask: 255.255.255.0
+  roles:
+    - network

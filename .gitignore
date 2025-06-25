@@ -7,3 +7,5 @@ kubeconfig
 kubeadmin-password
 .openshift_install_state.json
 rendezvousIP
+ansible/*.json
+ansible/*.log

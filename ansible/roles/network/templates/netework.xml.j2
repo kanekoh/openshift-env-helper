@@ -1,0 +1,12 @@
+<network>
+  <name>{{ virt_network_name }}</name>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='{{ virt_network_name }}' stp='on' delay='0'/>
+  <domain name='{{ virt_netework_name }}'/>
+  <ip address='{{ virt_network_gw }}' netmask='{{ virt_network_mask }}'>
+  </ip>
+</network>

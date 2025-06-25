@@ -1,0 +1,14 @@
+---
+# tasks file for roles/network
+- name: Define public network
+  block:
+    - name: Define a public network
+      community.libvirt.virt_net:
+        name: openshift-public
+        xml: '{{ lookup("tamplate", "network.xml.j2") }}'
+        autostart: true
+
+    - name: Start the public network
+      community.libvirt.virt_net:
+        name: openshift-public
+        state: active
